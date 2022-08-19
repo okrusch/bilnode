@@ -9,12 +9,15 @@ echo "*****************************"
 
 home_dir=/home/bilexp/bilnode
 bitcoin_dir=/bitcoin
+bitcoin_data_dir=/bitcoin_data
+template_dir=/templates
 
 sudo apt update -y
 
 sudo apt upgrade -y
 
 sudo apt install -y git tar build-essential libtool autotools-dev pkg-config libssl-dev libevent-dev bsdmainutils libboost-system-dev libboost-filesystem-dev libboost-chrono-dev libboost-program-options-dev libboost-thread-dev libminiupnpc-dev libzmq3-dev libboost-test-dev
+
 
 echo "*****************************"
 echo "*****************************"
@@ -41,7 +44,11 @@ echo "*****************************"
 echo "** Bitcoin installed **"
 echo "*****************************"
 echo "*****************************"
-
+#check partitions
+#format
+#create partition
+#mount
+#sudo mount /dev/sda $home_dir$bitcoin_dir
 cd $home_dir$bitcoin_dir
 
 echo "*****************************"
@@ -70,8 +77,10 @@ echo "** Getting RPCAUTH **"
 echo "*****************************"
 echo "*****************************"
 
-if [ ! -f "rcpauth.py" ]; then
+if [ ! -f "$home_dir$bitcoin_dir/rpcauth.py" ]; then
 	wget https://raw.githubusercontent.com/bitcoin/bitcoin/master/share/rpcauth/rpcauth.py
+else
+	echo "rpcauth.py already exists!"
 fi
 
 echo "*****************************"
@@ -79,20 +88,69 @@ echo "*****************************"
 echo "** Creating Bitcoin condfig File **"
 echo "*****************************"
 echo "*****************************"
+if [ ! -f "$home_dir$bitcoin_dir/bitcoin.conf" ]; then
+	cp $home_dir$template_dir/bitcoin_template.conf $home_dir$bitcoin_dir/bitcoin.conf
+	if [ ! -f "$home_dir$bitcoin_dir/rpcauth.py" ]; then
+        	wget https://raw.githubusercontent.com/bitcoin/bitcoin/master/share/rpcauth/rpcauth.py
+		rpcaut=$(python3 rpcauth.py bilnode)
+		autstring_first=${rpcaut#*rpcauth=}
+		autstring=${autstring_first%Your*}
+		autstring=${autstring%%*( )}
+		password=${rpcaut#*password:}
+		password=${password%%*( )}
+		autstring=$(echo $autstring)
+		sed -i "s|autstring|$autstring|g" $home_dir$bitcoin_dir/bitcoin.conf
+		touch $home_dir$bitcoin_dir/pw
+		echo $password > $home_dir$bitcoin_dir/pw
 
-#cp $home_dir$template_dir/bitcoin-template.conf $home_dir$bitcoin_dir/bitcoin.conf
+	else
+        	echo "rpcauth.py already exists!"
+		#checking fpr rpcautstring
+else
+	echo "bitcoin.conf already exists!"
+	echo "Do you wish to overwrite it? (y)es/(n)o " 
+	read ow
+	if [ ow=="y" ]; then
+		rm $home_dir$bitcoin_dir/bitcoin.conf
+		cp $home_dir$template_dir/bitcoin_template.conf $home_dir$bitcoin_dir/bitcoin.conf
+		if [ ! -f "$home_dir$bitcoin_dir/rpcauth.py" ]; then
+                	wget https://raw.githubusercontent.com/bitcoin/bitcoin/master/share/rpcauth/rpcauth.py
+                	rpcaut=$(python3 rpcauth.py bilnode)
+                	autstring_first=${rpcaut#*rpcauth=}
+                	autstring=${autstring_first%Your*}
+                	autstring=${autstring%%*( )}
+                	password=${rpcaut#*password:}
+                	password=${password%%*( )}
+                	autstring=$(echo $autstring)
+                	sed -i "s|autstring|$autstring|g" $home_dir$bitcoin_dir/bitcoin.conf
+                	touch $home_dir$bitcoin_dir/pw
+               		echo $password > $home_dir$bitcoin_dir/pw
 
+	        else
+        	        echo "rpcauth.py already exists!"
+               		 #checking fpr rpcautstring
 
+	else
+		echo "Not overwriting bitcoin.conf"
+	fi
+fi
 echo "*****************************"
 echo "*****************************"
 echo "** Step 1 finished! **"
 echo "*****************************"
 echo "*****************************"
 
+cd $home_dir$bitcoin_dir
 
 
-echo "Edit the Bitcoin Config File now!"
-echo "rpcauth="
-#python3 rpcauth.py bilnode
 
-echo "Node these credentials down!"
+echo "Runnig bitcoind as daemon"
+bitcoind
+
+#ln -s $bitcoind_data_dir/debug.log $home_dir$bitcoin_dir/bitcoind-mainnet.log
+
+bitcoin-cli getbestblockhash
+
+
+
+
