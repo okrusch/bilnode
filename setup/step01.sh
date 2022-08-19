@@ -44,11 +44,41 @@ echo "*****************************"
 echo "** Bitcoin installed **"
 echo "*****************************"
 echo "*****************************"
-#check partitions
-#format
-#create partition
-#mount
-#sudo mount /dev/sda $home_dir$bitcoin_dir
+#change hardcoding to vars
+table=$(sudo fdisk /dev/sda < /home/bilexp/bilnode/templates/fdisk_print)
+echo $table
+
+partition_check="/dev/sda1"
+renew="y"
+if [[ "$table" == *"$partition_check"* ]]; then
+        sudo umount /dev/sda1 /home/bilexp/.bitcoin
+        echo "Partition SDA1 found"
+        echo "Do you want to renew the partition? (y)es/(n)o"
+        #read rn
+        rn="n"
+        if [ $rn == "y" ]; then
+                sudo fdisk /dev/sda < /home/bilexp/bilnode/templates/fdisk_del
+        else
+                renew="n"
+        fi
+else 
+        echo "No Partition found"
+        renew="y"
+fi
+
+
+if [ $renew == "y" ]; then
+        echo "Making new partition"
+        sudo fdisk /dev/sda < /home/bilexp/bilnode/templates/fdisk_new
+        sudo mkfs -t ext4 /dev/sda1
+else 
+        echo "Using existing partition"
+fi
+
+#sudo fdisk /dev/sda < /home/bilexp/bilnode/templates/fdisk_print
+
+sudo mount /dev/sda1 /home/bilexp/.bitcoin 
+
 cd $home_dir$bitcoin_dir
 
 echo "*****************************"
